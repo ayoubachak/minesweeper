@@ -8,7 +8,7 @@ import {
   useDisclosure,
   useColorModeValue
 } from '@chakra-ui/react';
-import { FaCog, FaMedal, FaGamepad, FaHistory } from 'react-icons/fa';
+import { FaCog, FaMedal, FaGamepad, FaHistory, FaRobot } from 'react-icons/fa';
 import DifficultySelector from './DifficultySelector';
 import SettingsPanel from './SettingsPanel';
 import { GameContext } from '../../context/GameContext';
@@ -18,9 +18,10 @@ import GameHistory from '../History/GameHistory';
 
 interface MainMenuProps {
   onStartGame: () => void;
+  onStartAI: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
+const MainMenu: React.FC<MainMenuProps> = ({ onStartGame, onStartAI }) => {
   const { restartGame } = useContext(GameContext);
   const { settings } = useContext(SettingsContext);
   
@@ -52,6 +53,13 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
   const handlePlayClick = () => {
     restartGame();
     onStartGame(); // This will hide the menu and show the game
+  };
+  
+  // Function to start AI player
+  const handleAIClick = () => {
+    restartGame();
+    onStartGame(); // Show the game board
+    onStartAI();   // Start the AI
   };
   
   return (
@@ -87,6 +95,16 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
           </Button>
           
           <Button
+            leftIcon={<FaRobot />}
+            colorScheme="purple"
+            size="lg"
+            onClick={handleAIClick}
+            width={["100%", "auto"]}
+          >
+            Watch AI Play
+          </Button>
+          
+          <Button
             leftIcon={<FaMedal />}
             colorScheme="green"
             size="lg"
@@ -108,7 +126,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
           
           <Button
             leftIcon={<FaCog />}
-            colorScheme="purple"
+            colorScheme="gray"
             size="lg"
             onClick={onSettingsOpen}
             width={["100%", "auto"]}

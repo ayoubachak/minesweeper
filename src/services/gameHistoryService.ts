@@ -293,6 +293,23 @@ export const getGameSnapshotAtIndex = (
 ): {gameBoard: GameBoard, action: GameAction | null} => {
   try {
     if (!game || actionIndex < 0) {
+      // For the initial state, return a clean board with the original mine positions
+      if (game) {
+        const initialBoard = gameService.createBoardWithMines(
+          game.gameBoard.rows,
+          game.gameBoard.cols,
+          game.gameBoard.mines,
+          game.minePositions
+        );
+        
+        // Set the timer state to match the original game
+        if (game.startTime) {
+          initialBoard.startTime = game.startTime;
+        }
+        
+        return { gameBoard: initialBoard, action: null };
+      }
+      
       return { gameBoard: game?.gameBoard || null as any, action: null };
     }
     
@@ -305,6 +322,24 @@ export const getGameSnapshotAtIndex = (
     // If the action has a stored board state, use it
     if (action.boardState) {
       console.log(`Using stored board state for step ${actionIndex + 1}`);
+      
+      // Ensure critical game state is preserved
+      if (actionIndex === game.actions.length - 1 && game.isComplete) {
+        if (game.endTime) {
+          action.boardState.endTime = game.endTime;
+        }
+        
+        // For the last action in a completed game, ensure the status is set
+        if (action.type === 'REVEAL' && action.position) {
+          const { row, col } = action.position;
+          if (action.boardState.cells[row][col].isMine) {
+            action.boardState.status = GameStatus.LOST;
+          } else if (game.isComplete) {
+            action.boardState.status = GameStatus.WON;
+          }
+        }
+      }
+      
       return {
         gameBoard: action.boardState,
         action: action
@@ -364,6 +399,26 @@ export const getGameSnapshotAtIndex = (
             game.minePositions
           );
           break;
+      }
+    }
+    
+    // For the last step in a completed game, make sure to set the end time and status
+    if (actionIndex === game.actions.length - 1 && game.isComplete) {
+      if (game.endTime) {
+        currentBoard.endTime = game.endTime;
+      }
+      
+      // For lost games, ensure the last clicked mine is revealed
+      const lastAction = game.actions[actionIndex];
+      if (lastAction.type === 'REVEAL' && lastAction.position) {
+        const { row, col } = lastAction.position;
+        if (currentBoard.cells[row][col].isMine) {
+          currentBoard.status = GameStatus.LOST;
+          currentBoard.cells[row][col].revealed = true;
+          currentBoard = gameService.revealAllMines(currentBoard);
+        } else if (game.isComplete) {
+          currentBoard.status = GameStatus.WON;
+        }
       }
     }
     

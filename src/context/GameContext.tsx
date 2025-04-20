@@ -35,6 +35,7 @@ interface GameContextType {
   totalReplaySteps: number;
   exitReplay: () => void;
   refreshGameHistory: () => void;
+  replayGameData: gameHistoryService.GameHistoryEntry | null;
 }
 
 // Create context
@@ -74,7 +75,7 @@ const gameReducer = (state: GameBoard, action: GameAction): GameBoard => {
     
     case 'SET_BOARD':
       return action.payload;
-      
+    
     default:
       return state;
   }
@@ -306,24 +307,82 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       game.minePositions
     );
     
+    // Set the timer state to match the original game's start time
+    if (game.startTime) {
+      initialBoard.startTime = game.startTime;
+    }
+    
+    // If the game was completed, also set the end time for proper timer display
+    if (game.isComplete && game.endTime) {
+      initialBoard.endTime = game.endTime;
+    }
+    
     // Set the initial board state
     dispatch({ type: 'SET_BOARD', payload: initialBoard });
+    
+    console.log('Started game replay with board:', initialBoard);
   }, []);
   
-  const handleReplayStep = useCallback((stepIndex: number) => {
-    if (!replayGame || !isReplayMode) return;
+  /**
+   * Replays a specific step of a game
+   */
+  const handleReplayStep = (stepIndex: number) => {
+    if (!replayGame) return; // Use replayGame state, not currentGameId
     
-    // Get the game state at the requested step
-    const { gameBoard: reconstructedBoard } = gameHistoryService.getGameSnapshotAtIndex(replayGame, stepIndex);
+    // Get the game data - we already have it in our state
+    const game = replayGame;
     
-    // Update the step index and set the board
+    console.log(`Replaying step ${stepIndex + 1} of ${game.actions.length}`);
+    
+    // Get the board state at this step index
+    const { gameBoard: replayedBoard, action } = gameHistoryService.getGameSnapshotAtIndex(game, stepIndex);
+    
+    if (!replayedBoard) {
+      console.error('Could not get board state for step:', stepIndex);
+      return;
+    }
+    
+    // If this is the last step and the game ended in a loss, make sure all mines are revealed
+    const isLastStep = stepIndex === game.actions.length - 1;
+    
+    if (isLastStep && game.isComplete) {
+      // Explicitly set the game status based on the actual game outcome
+      // Important: Use the final status from the original game
+      replayedBoard.status = game.gameBoard.status;
+      
+      if (game.gameBoard.status === GameStatus.LOST) {
+        // Make sure all mines are revealed for a lost game
+        replayedBoard.cells = replayedBoard.cells.map(row => 
+          row.map(cell => ({
+            ...cell,
+            revealed: cell.isMine ? true : cell.revealed
+          }))
+        );
+        
+        // If the final action was clicking a mine, make sure it's revealed
+        if (action?.type === 'REVEAL' && action.position) {
+          const { row, col } = action.position;
+          if (replayedBoard.cells[row][col].isMine) {
+            // Ensure this specific mine is definitely revealed
+            replayedBoard.cells[row][col].revealed = true;
+          }
+        }
+      }
+      
+      // Make sure the end time is set for completed games
+      if (game.endTime && !replayedBoard.endTime) {
+        replayedBoard.endTime = game.endTime;
+      }
+    }
+    
+    // Update the current replay step
     setCurrentReplayStep(stepIndex);
     
-    // Use the exact board state from the stored action
-    dispatch({ type: 'SET_BOARD', payload: reconstructedBoard });
+    // Update the board
+    dispatch({ type: 'SET_BOARD', payload: replayedBoard });
     
-    console.log(`Showing replay step ${stepIndex + 1} of ${replayGame.actions.length}`);
-  }, [replayGame, isReplayMode]);
+    console.log('Current replay step:', stepIndex);
+  };
   
   const handleExitReplay = useCallback(() => {
     setIsReplayMode(false);
@@ -393,7 +452,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentReplayStep,
     totalReplaySteps: replayGame?.actions.length || 0,
     exitReplay: handleExitReplay,
-    refreshGameHistory
+    refreshGameHistory,
+    replayGameData: replayGame
   }), [
     gameBoard, 
     initGame, 

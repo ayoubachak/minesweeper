@@ -7,10 +7,12 @@ import MainMenu from './components/Menu/MainMenu';
 import { GameProvider, GameContext } from './context/GameContext';
 import { SettingsProvider } from './context/SettingsContext';
 import GameReplay from './components/History/GameReplay';
+import AIPlayer from './components/AI/AIPlayer';
 import theme from './theme';
 
 const AppContent: React.FC = () => {
   const [showMenu, setShowMenu] = useState<boolean>(true);
+  const [showAI, setShowAI] = useState<boolean>(false);
   const { isReplayMode } = useContext(GameContext);
   
   // Hide menu when in replay mode
@@ -32,6 +34,17 @@ const AppContent: React.FC = () => {
   // Function to return to the main menu
   const returnToMenu = () => {
     setShowMenu(true);
+    setShowAI(false); // Ensure AI is disabled when returning to menu
+  };
+  
+  // Function to start the AI player
+  const startAI = () => {
+    setShowAI(true);
+  };
+  
+  // Function to close the AI player
+  const closeAI = () => {
+    setShowAI(false);
   };
   
   return (
@@ -58,7 +71,7 @@ const AppContent: React.FC = () => {
       )}
       
       {showMenu && !isReplayMode ? (
-        <MainMenu onStartGame={startGame} />
+        <MainMenu onStartGame={startGame} onStartAI={startAI} />
       ) : (
         <Box width="100%">
           <GameInfo />
@@ -68,6 +81,9 @@ const AppContent: React.FC = () => {
       
       {/* Show replay controls when in replay mode */}
       {isReplayMode && <GameReplay onClose={returnToMenu} />}
+      
+      {/* Show AI player when activated */}
+      {showAI && !isReplayMode && <AIPlayer onClose={closeAI} />}
     </Flex>
   );
 };
