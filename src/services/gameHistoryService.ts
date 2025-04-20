@@ -330,7 +330,8 @@ export const getGameSnapshotAtIndex = (
         return { gameBoard: initialBoard, action: null };
       }
       
-      return { gameBoard: game?.gameBoard || null as any, action: null };
+      // If game is null or undefined, return a null board
+      return { gameBoard: null as any, action: null };
     }
     
     if (actionIndex >= game.actions.length) {
