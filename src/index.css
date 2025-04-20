@@ -1,0 +1,57 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Reset box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove margin and padding from all elements */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+/* Set core body defaults */
+body {
+  min-height: 100vh;
+  text-rendering: optimizeSpeed;
+  line-height: 1.5;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Responsive images */
+img,
+picture {
+  max-width: 100%;
+  display: block;
+}
+
+/* Right click styling for flagging cells */
+.cell-right-click {
+  cursor: pointer;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Responsive height adjustments */
+@media (max-height: 700px) {
+  body {
+    padding: 0.5rem;
+  }
+} 
