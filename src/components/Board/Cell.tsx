@@ -13,6 +13,7 @@ interface CellProps {
   gameMode: GameMode;
   gameOver: boolean;
   enableAnimations: boolean;
+  size?: number;
 }
 
 const CELL_COLORS = [
@@ -35,7 +36,8 @@ export const Cell: React.FC<CellProps> = ({
   onChord,
   gameMode,
   gameOver,
-  enableAnimations
+  enableAnimations,
+  size = 30 // Default size of 30px
 }) => {
   const { revealed, isMine, isFlagged, adjacentMines } = cellState;
   
@@ -48,6 +50,9 @@ export const Cell: React.FC<CellProps> = ({
     revealed ? 'gray.300' : 'gray.400',
     revealed ? 'gray.600' : 'gray.500'
   );
+  
+  // Adjust font size based on cell size
+  const fontSize = size >= 30 ? "lg" : size >= 24 ? "md" : "sm";
   
   const handleLeftClick = useCallback(() => {
     if (gameOver) return;
@@ -92,10 +97,18 @@ export const Cell: React.FC<CellProps> = ({
     e.preventDefault();
   }, []);
   
+  // Calculate icon size based on cell size
+  const getIconSize = () => {
+    if (size >= 40) return 20;
+    if (size >= 30) return 16;
+    if (size >= 24) return 14;
+    return 12;
+  };
+  
   return (
     <Box
-      width="30px"
-      height="30px"
+      width={`${size}px`}
+      height={`${size}px`}
       bg={bgColor}
       border="1px solid"
       borderColor={borderColor}
@@ -110,12 +123,12 @@ export const Cell: React.FC<CellProps> = ({
     >
       <Center h="100%">
         {revealed && isMine && (
-          <FaBomb color="black" />
+          <FaBomb size={getIconSize()} color="black" />
         )}
         
         {revealed && !isMine && adjacentMines > 0 && (
           <Text
-            fontSize="lg"
+            fontSize={fontSize}
             fontWeight="bold"
             color={CELL_COLORS[adjacentMines - 1]}
           >
@@ -124,7 +137,7 @@ export const Cell: React.FC<CellProps> = ({
         )}
         
         {!revealed && isFlagged && (
-          <FaFlag color="red" />
+          <FaFlag size={getIconSize()} color="red" />
         )}
       </Center>
     </Box>

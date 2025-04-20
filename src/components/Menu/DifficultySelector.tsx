@@ -16,10 +16,16 @@ import {
   Radio,
   RadioGroup,
   Stack,
+  Text,
   useColorModeValue
 } from '@chakra-ui/react';
 import { SettingsContext } from '../../context/SettingsContext';
 import { Difficulty } from '../../types/game.types';
+
+// Configuration limits
+const MAX_ROWS = 40;     // Increased from 24
+const MAX_COLS = 60;     // Increased from 30
+const MIN_DIMENSION = 5;
 
 const DifficultySelector: React.FC = () => {
   const { settings, updateDifficulty, updateSettings } = useContext(SettingsContext);
@@ -35,24 +41,42 @@ const DifficultySelector: React.FC = () => {
   
   const handleRowsChange = (value: string) => {
     const rows = parseInt(value);
-    if (!isNaN(rows) && rows > 0) {
+    if (!isNaN(rows) && rows >= MIN_DIMENSION && rows <= MAX_ROWS) {
       updateSettings({ rows });
+      
+      // Adjust mines if necessary to maintain reasonable density
+      const maxMines = Math.floor(rows * settings.cols * 0.35);
+      if (settings.mines > maxMines) {
+        updateSettings({ mines: maxMines });
+      }
     }
   };
   
   const handleColsChange = (value: string) => {
     const cols = parseInt(value);
-    if (!isNaN(cols) && cols > 0) {
+    if (!isNaN(cols) && cols >= MIN_DIMENSION && cols <= MAX_COLS) {
       updateSettings({ cols });
+      
+      // Adjust mines if necessary to maintain reasonable density
+      const maxMines = Math.floor(settings.rows * cols * 0.35);
+      if (settings.mines > maxMines) {
+        updateSettings({ mines: maxMines });
+      }
     }
   };
   
   const handleMinesChange = (value: string) => {
     const mines = parseInt(value);
-    if (!isNaN(mines) && mines > 0) {
+    const maxMines = Math.floor(settings.rows * settings.cols * 0.35);
+    const minMines = 1;
+    
+    if (!isNaN(mines) && mines >= minMines && mines <= maxMines) {
       updateSettings({ mines });
     }
   };
+  
+  // Calculate maximum mines based on current dimensions
+  const maxMines = Math.floor(settings.rows * settings.cols * 0.35);
   
   return (
     <Box>
@@ -75,6 +99,10 @@ const DifficultySelector: React.FC = () => {
       
       {showCustom && (
         <Box bg={bgColor} p={3} borderRadius="md">
+          <Text mb={3} fontSize="sm" color="gray.500">
+            For the best experience, total cells should not exceed 1,000 (current: {settings.rows * settings.cols} cells).
+          </Text>
+          
           <Grid 
             templateColumns={["1fr", "repeat(3, 1fr)"]} 
             gap={4}
@@ -82,8 +110,8 @@ const DifficultySelector: React.FC = () => {
             <FormControl>
               <FormLabel>Rows</FormLabel>
               <NumberInput 
-                min={5} 
-                max={24} 
+                min={MIN_DIMENSION} 
+                max={MAX_ROWS} 
                 value={settings.rows}
                 onChange={handleRowsChange}
               >
@@ -98,8 +126,8 @@ const DifficultySelector: React.FC = () => {
             <FormControl>
               <FormLabel>Columns</FormLabel>
               <NumberInput 
-                min={5} 
-                max={30} 
+                min={MIN_DIMENSION} 
+                max={MAX_COLS} 
                 value={settings.cols}
                 onChange={handleColsChange}
               >
@@ -115,7 +143,7 @@ const DifficultySelector: React.FC = () => {
               <FormLabel>Mines</FormLabel>
               <NumberInput 
                 min={1} 
-                max={Math.floor(settings.rows * settings.cols * 0.35)} 
+                max={maxMines}
                 value={settings.mines}
                 onChange={handleMinesChange}
               >
@@ -125,6 +153,9 @@ const DifficultySelector: React.FC = () => {
                   <NumberDecrementStepper />
                 </NumberInputStepper>
               </NumberInput>
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                Max: {maxMines} mines ({Math.round(maxMines * 100 / (settings.rows * settings.cols))}%)
+              </Text>
             </FormControl>
           </Grid>
         </Box>
