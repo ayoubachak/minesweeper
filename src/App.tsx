@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Box, ChakraProvider, Container, Flex, IconButton, useColorMode } from '@chakra-ui/react';
 import { FaCog, FaHome } from 'react-icons/fa';
 import Board from './components/Board/Board';
@@ -12,6 +12,13 @@ import theme from './theme';
 const AppContent: React.FC = () => {
   const [showMenu, setShowMenu] = useState<boolean>(true);
   const { isReplayMode } = useContext(GameContext);
+  
+  // Hide menu when in replay mode
+  useEffect(() => {
+    if (isReplayMode) {
+      setShowMenu(false);
+    }
+  }, [isReplayMode]);
   
   const toggleMenu = () => {
     setShowMenu(prev => !prev);
@@ -35,20 +42,22 @@ const AppContent: React.FC = () => {
       justify="center"
       position="relative"
     >
-      {/* Home/Menu Button */}
-      <IconButton
-        aria-label="Toggle Menu"
-        icon={showMenu ? <FaCog /> : <FaHome />}
-        position="absolute"
-        top={2}
-        right={2}
-        onClick={toggleMenu}
-        colorScheme="blue"
-        zIndex={10}
-        size="md"
-      />
+      {/* Home/Menu Button - Hidden in replay mode */}
+      {!isReplayMode && (
+        <IconButton
+          aria-label="Toggle Menu"
+          icon={showMenu ? <FaCog /> : <FaHome />}
+          position="absolute"
+          top={2}
+          right={2}
+          onClick={toggleMenu}
+          colorScheme="blue"
+          zIndex={10}
+          size="md"
+        />
+      )}
       
-      {showMenu ? (
+      {showMenu && !isReplayMode ? (
         <MainMenu onStartGame={startGame} />
       ) : (
         <Box width="100%">

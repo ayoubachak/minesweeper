@@ -34,6 +34,7 @@ interface GameContextType {
   currentReplayStep: number;
   totalReplaySteps: number;
   exitReplay: () => void;
+  refreshGameHistory: () => void;
 }
 
 // Create context
@@ -136,32 +137,56 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.rows, settings.cols, settings.mines, isReplayMode]); // Removed gameBoard dependency
   
-  // Save score when game is won
+  // Save score when game is won and update game history when game is over
   useEffect(() => {
-    if (isReplayMode) return; // Don't save scores during replay
+    if (isReplayMode) return; // Don't save during replay
     
-    if (gameBoard.status === GameStatus.WON && gameBoard.startTime && gameBoard.endTime) {
+    // When game is over (won or lost)
+    if ((gameBoard.status === GameStatus.WON || gameBoard.status === GameStatus.LOST) && 
+        gameBoard.startTime && gameBoard.endTime) {
+      
+      // First, ensure the game is marked as complete in history
+      console.log(`Game over detected: ${gameBoard.status}`);
+      
       try {
-        const time = gameBoard.endTime - gameBoard.startTime;
+        // For won games, also save the score
+        if (gameBoard.status === GameStatus.WON) {
+          const time = gameBoard.endTime - gameBoard.startTime;
+          
+          const savedScore = storageService.saveScore({
+            difficulty: settings.difficulty,
+            rows: gameBoard.rows,
+            cols: gameBoard.cols,
+            mines: gameBoard.mines,
+            time,
+          });
+          
+          console.log('Score saved successfully:', savedScore);
+        }
         
-        const savedScore = storageService.saveScore({
-          difficulty: settings.difficulty,
-          rows: gameBoard.rows,
-          cols: gameBoard.cols,
-          mines: gameBoard.mines,
-          time,
-        });
-        
-        console.log('Score saved successfully:', savedScore);
-        
-        // Refresh game history
-        const history = gameHistoryService.getGameHistory();
-        setGameHistory(history);
+        // Force a save of the completed game to history
+        const currentGame = gameHistoryService.getCurrentGame();
+        if (currentGame) {
+          // Update the current game status
+          currentGame.isComplete = true;
+          currentGame.endTime = gameBoard.endTime;
+          
+          // Explicitly finish the current game and move to history
+          gameHistoryService.finishCurrentGame(currentGame);
+          console.log('Game explicitly saved to history:', currentGame.id);
+          
+          // Refresh the game history list
+          setTimeout(() => {
+            const history = gameHistoryService.getGameHistory();
+            console.log(`Loaded ${history.length} games from history after completion`);
+            setGameHistory(history);
+          }, 100);
+        }
       } catch (err) {
-        console.error('Error saving score:', err);
+        console.error('Error saving game or score:', err);
       }
     }
-  }, [gameBoard, settings.difficulty, isReplayMode]);
+  }, [gameBoard.status, gameBoard.startTime, gameBoard.endTime, gameBoard.rows, gameBoard.cols, gameBoard.mines, settings.difficulty, isReplayMode]);
   
   // Action functions
   const initGame = useCallback((rows: number, cols: number, mines: number) => {
@@ -273,20 +298,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsReplayMode(true);
     setCurrentReplayStep(0);
     
+    // Create a fresh board with the original mine positions
+    const initialBoard = gameService.createBoardWithMines(
+      game.gameBoard.rows,
+      game.gameBoard.cols,
+      game.gameBoard.mines,
+      game.minePositions
+    );
+    
     // Set the initial board state
-    dispatch({ type: 'SET_BOARD', payload: game.gameBoard });
+    dispatch({ type: 'SET_BOARD', payload: initialBoard });
   }, []);
   
   const handleReplayStep = useCallback((stepIndex: number) => {
     if (!replayGame || !isReplayMode) return;
     
-    // TODO: Implement a proper replay that reconstructs the board state
-    // For now, we'll just jump to different points in the action history
+    // Get the game state at the requested step
+    const { gameBoard: reconstructedBoard } = gameHistoryService.getGameSnapshotAtIndex(replayGame, stepIndex);
     
+    // Update the step index and set the board
     setCurrentReplayStep(stepIndex);
     
-    // In a real implementation, we would apply all actions up to the stepIndex
-    // to get the correct board state
+    // Use the exact board state from the stored action
+    dispatch({ type: 'SET_BOARD', payload: reconstructedBoard });
+    
+    console.log(`Showing replay step ${stepIndex + 1} of ${replayGame.actions.length}`);
   }, [replayGame, isReplayMode]);
   
   const handleExitReplay = useCallback(() => {
@@ -318,6 +354,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.rows, settings.cols, settings.mines]);
   
+  // Explicitly refresh game history
+  const refreshGameHistory = useCallback(() => {
+    const history = gameHistoryService.getGameHistory();
+    console.log(`Refreshed game history, found ${history.length} games`);
+    setGameHistory(history);
+  }, []);
+  
+  // Auto-refresh history periodically and on mount
+  useEffect(() => {
+    // Initial load
+    refreshGameHistory();
+    
+    // Refresh on an interval
+    const refreshInterval = setInterval(() => {
+      if (!isReplayMode) {
+        refreshGameHistory();
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [refreshGameHistory, isReplayMode]);
+  
   // Context value
   const value = useMemo(() => ({
     gameBoard,
@@ -334,7 +392,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     replayStep: handleReplayStep,
     currentReplayStep,
     totalReplaySteps: replayGame?.actions.length || 0,
-    exitReplay: handleExitReplay
+    exitReplay: handleExitReplay,
+    refreshGameHistory
   }), [
     gameBoard, 
     initGame, 
@@ -350,7 +409,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     handleReplayStep,
     currentReplayStep,
     replayGame,
-    handleExitReplay
+    handleExitReplay,
+    refreshGameHistory
   ]);
   
   return (

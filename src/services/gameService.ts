@@ -59,6 +59,59 @@ export const createBoard = (rows: number, cols: number, mines: number): GameBoar
 };
 
 /**
+ * Creates a game board with predefined mine positions
+ * Used for replaying games to ensure the same board is used
+ */
+export const createBoardWithMines = (rows: number, cols: number, mines: number, minePositions: Position[]): GameBoard => {
+  // Initialize empty board with all cells hidden
+  const board: CellState[][] = Array(rows).fill(null).map(() => 
+    Array(cols).fill(null).map(() => ({
+      revealed: false,
+      isMine: false,
+      isFlagged: false,
+      adjacentMines: 0,
+    }))
+  );
+
+  // Place mines at the specified positions
+  minePositions.forEach(pos => {
+    if (pos.row >= 0 && pos.row < rows && pos.col >= 0 && pos.col < cols) {
+      board[pos.row][pos.col].isMine = true;
+    }
+  });
+
+  // Calculate adjacent mines for each cell
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (board[row][col].isMine) continue;
+      
+      let adjacentMines = 0;
+      
+      // Check all 8 neighboring cells
+      for (let r = Math.max(0, row - 1); r <= Math.min(rows - 1, row + 1); r++) {
+        for (let c = Math.max(0, col - 1); c <= Math.min(cols - 1, col + 1); c++) {
+          if (r === row && c === col) continue;
+          if (board[r][c].isMine) adjacentMines++;
+        }
+      }
+      
+      board[row][col].adjacentMines = adjacentMines;
+    }
+  }
+
+  return {
+    cells: board,
+    rows,
+    cols,
+    mines,
+    minesRemaining: mines,
+    status: GameStatus.READY,
+    startTime: null,
+    endTime: null,
+  };
+};
+
+/**
  * Get predefined dimensions based on difficulty level
  */
 export const getDifficultySettings = (difficulty: Difficulty): { rows: number, cols: number, mines: number } => {

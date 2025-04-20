@@ -41,8 +41,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1); // seconds per step
   
-  const bgColor = useColorModeValue('white', 'gray.200');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  // Improved contrast
+  const bgColor = useColorModeValue('gray.100', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const borderColor = useColorModeValue('gray.300', 'gray.600');
   
   // Auto-play functionality
   useEffect(() => {
@@ -114,27 +116,28 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
       right={0}
       p={4}
       bg={bgColor}
-      borderTop="1px solid"
+      borderTop="2px solid"
       borderColor={borderColor}
-      boxShadow="0 -4px 6px -1px rgba(0, 0, 0, 0.1)"
+      boxShadow="0 -4px 6px -1px rgba(0, 0, 0, 0.2)"
       zIndex={100}
+      color={textColor}
     >
       <Flex direction="column" maxW="container.md" mx="auto">
         <Flex justify="space-between" align="center" mb={2}>
-          <Text fontWeight="bold">
+          <Text fontWeight="bold" fontSize="lg">
             Game Replay
           </Text>
           
           <HStack>
-            <Badge colorScheme="blue" variant="solid">
+            <Badge colorScheme="blue" variant="solid" fontSize="md" p={1}>
               Step {currentReplayStep + 1} of {totalReplaySteps}
             </Badge>
             
-            <Badge colorScheme="green" variant="outline">
+            <Badge colorScheme="green" variant="solid" fontSize="md" p={1}>
               {playbackSpeed}x speed
             </Badge>
             
-            <Button size="xs" colorScheme="red" onClick={handleClose}>
+            <Button size="sm" colorScheme="red" onClick={handleClose} fontWeight="bold">
               Exit Replay
             </Button>
           </HStack>
@@ -145,9 +148,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             <IconButton
               aria-label="Skip to Start"
               icon={<FaFastBackward />}
-              size="sm"
+              size="md"
               onClick={skipToStart}
               isDisabled={currentReplayStep === 0}
+              colorScheme="blue"
             />
           </Tooltip>
           
@@ -155,9 +159,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             <IconButton
               aria-label="Previous Step"
               icon={<FaStepBackward />}
-              size="sm"
+              size="md"
               onClick={stepBackward}
               isDisabled={currentReplayStep === 0}
+              colorScheme="blue"
             />
           </Tooltip>
           
@@ -165,7 +170,7 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             <IconButton
               aria-label={isPlaying ? "Pause" : "Play"}
               icon={isPlaying ? <FaPause /> : <FaPlay />}
-              size="sm"
+              size="md"
               onClick={togglePlayback}
               colorScheme={isPlaying ? "orange" : "green"}
               isDisabled={currentReplayStep >= totalReplaySteps - 1}
@@ -176,9 +181,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             <IconButton
               aria-label="Next Step"
               icon={<FaStepForward />}
-              size="sm"
+              size="md"
               onClick={stepForward}
               isDisabled={currentReplayStep >= totalReplaySteps - 1}
+              colorScheme="blue"
             />
           </Tooltip>
           
@@ -186,14 +192,15 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             <IconButton
               aria-label="Skip to End"
               icon={<FaFastForward />}
-              size="sm"
+              size="md"
               onClick={skipToEnd}
               isDisabled={currentReplayStep >= totalReplaySteps - 1}
+              colorScheme="blue"
             />
           </Tooltip>
           
           <Tooltip label={`Speed: ${playbackSpeed}x`}>
-            <Button size="sm" onClick={handleSpeedChange} ml={2} variant="outline">
+            <Button size="md" onClick={handleSpeedChange} ml={2} colorScheme="teal">
               {playbackSpeed}x
             </Button>
           </Tooltip>
@@ -209,10 +216,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
             ml={2}
             colorScheme="blue"
           >
-            <SliderTrack>
+            <SliderTrack bg="gray.300">
               <SliderFilledTrack />
             </SliderTrack>
-            <SliderThumb />
+            <SliderThumb boxSize={6} />
           </Slider>
         </Flex>
       </Flex>
