@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Box, ChakraProvider, Container, Flex, IconButton, useColorMode } from '@chakra-ui/react';
 import { FaCog, FaHome } from 'react-icons/fa';
 import Board from './components/Board/Board';
 import GameInfo from './components/Header/GameInfo';
 import MainMenu from './components/Menu/MainMenu';
-import { GameProvider } from './context/GameContext';
+import { GameProvider, GameContext } from './context/GameContext';
 import { SettingsProvider } from './context/SettingsContext';
+import GameReplay from './components/History/GameReplay';
 import theme from './theme';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [showMenu, setShowMenu] = useState<boolean>(true);
+  const { isReplayMode } = useContext(GameContext);
   
   const toggleMenu = () => {
     setShowMenu(prev => !prev);
@@ -26,39 +28,48 @@ const App: React.FC = () => {
   };
   
   return (
+    <Flex 
+      direction="column"
+      minH="calc(100vh - 40px)"
+      align="center"
+      justify="center"
+      position="relative"
+    >
+      {/* Home/Menu Button */}
+      <IconButton
+        aria-label="Toggle Menu"
+        icon={showMenu ? <FaCog /> : <FaHome />}
+        position="absolute"
+        top={2}
+        right={2}
+        onClick={toggleMenu}
+        colorScheme="blue"
+        zIndex={10}
+        size="md"
+      />
+      
+      {showMenu ? (
+        <MainMenu onStartGame={startGame} />
+      ) : (
+        <Box width="100%">
+          <GameInfo />
+          <Board onReturnToMenu={returnToMenu} />
+        </Box>
+      )}
+      
+      {/* Show replay controls when in replay mode */}
+      {isReplayMode && <GameReplay onClose={returnToMenu} />}
+    </Flex>
+  );
+};
+
+const App: React.FC = () => {
+  return (
     <ChakraProvider theme={theme}>
       <SettingsProvider>
         <GameProvider>
           <Container maxW="container.md" py={5}>
-            <Flex 
-              direction="column"
-              minH="calc(100vh - 40px)"
-              align="center"
-              justify="center"
-              position="relative"
-            >
-              {/* Home/Menu Button */}
-              <IconButton
-                aria-label="Toggle Menu"
-                icon={showMenu ? <FaCog /> : <FaHome />}
-                position="absolute"
-                top={2}
-                right={2}
-                onClick={toggleMenu}
-                colorScheme="blue"
-                zIndex={10}
-                size="md"
-              />
-              
-              {showMenu ? (
-                <MainMenu onStartGame={startGame} />
-              ) : (
-                <Box width="100%">
-                  <GameInfo />
-                  <Board onReturnToMenu={returnToMenu} />
-                </Box>
-              )}
-            </Flex>
+            <AppContent />
           </Container>
         </GameProvider>
       </SettingsProvider>

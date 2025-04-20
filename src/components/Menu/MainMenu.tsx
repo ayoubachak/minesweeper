@@ -8,12 +8,13 @@ import {
   useDisclosure,
   useColorModeValue
 } from '@chakra-ui/react';
-import { FaCog, FaMedal, FaGamepad } from 'react-icons/fa';
+import { FaCog, FaMedal, FaGamepad, FaHistory } from 'react-icons/fa';
 import DifficultySelector from './DifficultySelector';
 import SettingsPanel from './SettingsPanel';
 import { GameContext } from '../../context/GameContext';
 import { SettingsContext } from '../../context/SettingsContext';
 import HighScores from '../Scores/HighScores';
+import GameHistory from '../History/GameHistory';
 
 interface MainMenuProps {
   onStartGame: () => void;
@@ -35,6 +36,13 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
     isOpen: isScoresOpen, 
     onOpen: onScoresOpen, 
     onClose: onScoresClose 
+  } = useDisclosure();
+  
+  // For history modal
+  const {
+    isOpen: isHistoryOpen,
+    onOpen: onHistoryOpen,
+    onClose: onHistoryClose
   } = useDisclosure();
   
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -89,6 +97,16 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
           </Button>
           
           <Button
+            leftIcon={<FaHistory />}
+            colorScheme="teal"
+            size="lg"
+            onClick={onHistoryOpen}
+            width={["100%", "auto"]}
+          >
+            Game History
+          </Button>
+          
+          <Button
             leftIcon={<FaCog />}
             colorScheme="purple"
             size="lg"
@@ -105,6 +123,9 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
       
       {/* High Scores Modal */}
       <HighScores isOpen={isScoresOpen} onClose={onScoresClose} />
+      
+      {/* Game History Modal */}
+      <GameHistory isOpen={isHistoryOpen} onClose={onHistoryClose} />
     </Box>
   );
 };

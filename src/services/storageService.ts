@@ -17,6 +17,19 @@ export const DEFAULT_SETTINGS: GameSettings = {
   gameMode: GameMode.BOMB,
 };
 
+// Utility function to check if localStorage is available
+const isLocalStorageAvailable = (): boolean => {
+  try {
+    const testKey = '__test_storage__';
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    console.error('localStorage is not available:', e);
+    return false;
+  }
+};
+
 /**
  * Save a new score to localStorage
  */
@@ -34,7 +47,16 @@ export const saveScore = (score: Omit<GameScore, 'id' | 'date'>): GameScore => {
   scores.push(scoreWithId);
   
   // Save to localStorage
-  localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+  try {
+    if (isLocalStorageAvailable()) {
+      localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
+      console.log('Score saved successfully:', scoreWithId);
+    } else {
+      console.warn('localStorage not available, score not saved');
+    }
+  } catch (error) {
+    console.error('Error saving score to localStorage:', error);
+  }
   
   return scoreWithId;
 };
@@ -43,13 +65,20 @@ export const saveScore = (score: Omit<GameScore, 'id' | 'date'>): GameScore => {
  * Get all saved scores from localStorage
  */
 export const getScores = (): GameScore[] => {
-  const scoresJson = localStorage.getItem(SCORES_KEY);
-  if (!scoresJson) return [];
-  
   try {
-    return JSON.parse(scoresJson);
+    if (!isLocalStorageAvailable()) {
+      console.warn('localStorage not available, returning empty scores');
+      return [];
+    }
+    
+    const scoresJson = localStorage.getItem(SCORES_KEY);
+    if (!scoresJson) return [];
+    
+    const parsedScores = JSON.parse(scoresJson);
+    console.log(`Retrieved ${parsedScores.length} scores from localStorage`);
+    return parsedScores;
   } catch (error) {
-    console.error('Error parsing scores from localStorage', error);
+    console.error('Error getting scores from localStorage:', error);
     return [];
   }
 };
@@ -76,27 +105,52 @@ export const getTopScores = (difficulty: Difficulty, limit = 10): GameScore[] =>
  * Clear all scores
  */
 export const clearScores = (): void => {
-  localStorage.removeItem(SCORES_KEY);
+  try {
+    if (isLocalStorageAvailable()) {
+      localStorage.removeItem(SCORES_KEY);
+      console.log('Scores cleared successfully');
+    } else {
+      console.warn('localStorage not available, could not clear scores');
+    }
+  } catch (error) {
+    console.error('Error clearing scores from localStorage:', error);
+  }
 };
 
 /**
  * Save game settings to localStorage
  */
 export const saveSettings = (settings: GameSettings): void => {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    if (isLocalStorageAvailable()) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      console.log('Settings saved successfully');
+    } else {
+      console.warn('localStorage not available, settings not saved');
+    }
+  } catch (error) {
+    console.error('Error saving settings to localStorage:', error);
+  }
 };
 
 /**
  * Get saved game settings from localStorage
  */
 export const getSettings = (): GameSettings => {
-  const settingsJson = localStorage.getItem(SETTINGS_KEY);
-  if (!settingsJson) return DEFAULT_SETTINGS;
-  
   try {
-    return JSON.parse(settingsJson);
+    if (!isLocalStorageAvailable()) {
+      console.warn('localStorage not available, returning default settings');
+      return DEFAULT_SETTINGS;
+    }
+    
+    const settingsJson = localStorage.getItem(SETTINGS_KEY);
+    if (!settingsJson) return DEFAULT_SETTINGS;
+    
+    const parsedSettings = JSON.parse(settingsJson);
+    console.log('Settings retrieved successfully');
+    return parsedSettings;
   } catch (error) {
-    console.error('Error parsing settings from localStorage', error);
+    console.error('Error getting settings from localStorage:', error);
     return DEFAULT_SETTINGS;
   }
 }; 
