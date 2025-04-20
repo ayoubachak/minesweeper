@@ -119,6 +119,23 @@ export const recordGameAction = (
       boardSnapshot = JSON.parse(JSON.stringify(gameBoard));
     }
     
+    // If game is lost, ensure all mines are properly revealed in the snapshot
+    if (gameBoard.status === GameStatus.LOST) {
+      boardSnapshot.cells = boardSnapshot.cells.map((row, rowIndex) => 
+        row.map((cell, colIndex) => {
+          // If this is the mine that was clicked (caused the loss)
+          if (position && rowIndex === position.row && colIndex === position.col && cell.isMine) {
+            return { ...cell, revealed: true };
+          }
+          // All other mines should be revealed too
+          else if (cell.isMine) {
+            return { ...cell, revealed: true };
+          }
+          return cell;
+        })
+      );
+    }
+    
     // Add action to history with the current board state
     const action: GameAction = {
       type,
@@ -129,10 +146,13 @@ export const recordGameAction = (
     
     currentGame.actions.push(action);
     
-    // If game is won or lost, mark as complete
+    // If game is won or lost, mark as complete and update the final game board state
     if (gameBoard.status === GameStatus.WON || gameBoard.status === GameStatus.LOST) {
       currentGame.isComplete = true;
       currentGame.endTime = gameBoard.endTime || Date.now();
+      
+      // Save the final board state in the game history entry
+      currentGame.gameBoard = boardSnapshot;
       
       // Move from current game to history
       finishCurrentGame(currentGame);
@@ -319,27 +339,55 @@ export const getGameSnapshotAtIndex = (
     
     const action = game.actions[actionIndex];
     
-    // If the action has a stored board state, use it
-    if (action.boardState) {
-      console.log(`Using stored board state for step ${actionIndex + 1}`);
+    // Special handling for the last action of a completed game
+    const isLastAction = actionIndex === game.actions.length - 1;
+    if (isLastAction && game.isComplete) {
+      // For the very last action, use the stored final game board state
+      // This ensures all mines are revealed for lost games
+      let finalBoard: GameBoard;
       
-      // Ensure critical game state is preserved
-      if (actionIndex === game.actions.length - 1 && game.isComplete) {
-        if (game.endTime) {
-          action.boardState.endTime = game.endTime;
-        }
+      // Use the action's stored board state if available 
+      if (action.boardState) {
+        finalBoard = structuredClone(action.boardState);
+      } else {
+        // If not available, use the game's final state
+        finalBoard = structuredClone(game.gameBoard);
+      }
+      
+      // Ensure proper status and timer for completed games
+      finalBoard.status = game.gameBoard.status;
+      if (game.endTime) {
+        finalBoard.endTime = game.endTime;
+      }
+      
+      // For lost games, make sure all mines are revealed
+      if (game.gameBoard.status === GameStatus.LOST) {
+        finalBoard.cells = finalBoard.cells.map(row => 
+          row.map(cell => ({
+            ...cell,
+            revealed: cell.isMine ? true : cell.revealed
+          }))
+        );
         
-        // For the last action in a completed game, ensure the status is set
+        // If the final action was clicking a mine, ensure it's highlighted
         if (action.type === 'REVEAL' && action.position) {
           const { row, col } = action.position;
-          if (action.boardState.cells[row][col].isMine) {
-            action.boardState.status = GameStatus.LOST;
-          } else if (game.isComplete) {
-            action.boardState.status = GameStatus.WON;
+          if (finalBoard.cells[row][col].isMine) {
+            // Ensure this specific mine is definitely revealed
+            finalBoard.cells[row][col].revealed = true;
           }
         }
       }
       
+      return {
+        gameBoard: finalBoard,
+        action: action
+      };
+    }
+    
+    // If the action has a stored board state, use it
+    if (action.boardState) {
+      console.log(`Using stored board state for step ${actionIndex + 1}`);
       return {
         gameBoard: action.boardState,
         action: action

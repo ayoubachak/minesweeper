@@ -19,7 +19,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  useDisclosure
+  useDisclosure,
+  ModalCloseButton
 } from '@chakra-ui/react';
 import { 
   FaPlay, 
@@ -32,7 +33,8 @@ import {
   FaTrophy,
   FaBomb,
   FaHome,
-  FaTimes
+  FaTimes,
+  FaEye
 } from 'react-icons/fa';
 import { MdSpeed } from 'react-icons/md';
 import { GameContext } from '../../context/GameContext';
@@ -84,18 +86,30 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
   const wasGameLost = replayGameData && replayGameData.isComplete && 
     replayGameData.gameBoard.status === GameStatus.LOST;
   
+  // Debug - log replay status when at final step
+  useEffect(() => {
+    if (isLastStep && replayGameData) {
+      console.log('Replay data:', {
+        isComplete: replayGameData.isComplete,
+        gameStatus: replayGameData.gameBoard.status,
+        wasGameWon,
+        wasGameLost
+      });
+    }
+  }, [isLastStep, replayGameData, wasGameWon, wasGameLost]);
+  
   // Calculate time played if the game is complete
   const gameTime = gameBoard.startTime && gameBoard.endTime 
     ? Math.floor((gameBoard.endTime - gameBoard.startTime) / 1000)
     : 0;
   
-  // Show result modal when game completes during replay
+  // Show result modal when reaching the final step of a completed game
   useEffect(() => {
-    if (isLastStep && isGameComplete && isPlaying) {
-      setIsPlaying(false);
-      onOpen(); // Open the result modal
+    if (isLastStep && isGameComplete) {
+      // If the game is complete and we're at the last step, show the modal
+      onOpen();
     }
-  }, [isLastStep, isGameComplete, isPlaying, onOpen]);
+  }, [isLastStep, isGameComplete, onOpen]);
   
   // Auto-play functionality
   useEffect(() => {
@@ -148,7 +162,12 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
   
   const skipToEnd = () => {
     setIsPlaying(false);
-    replayStep(totalReplaySteps - 1);
+    
+    // Skip to the last step
+    if (totalReplaySteps > 0) {
+      const lastStepIndex = totalReplaySteps - 1;
+      replayStep(lastStepIndex);
+    }
   };
   
   const handleSpeedChange = () => {
@@ -164,8 +183,8 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
   
   // Handle playback completed
   const handleReplayCompleted = () => {
+    // Simply close the modal and continue viewing the replay
     closeModal();
-    // The modal will show game completed
   };
   
   // Handle return to main menu
@@ -173,9 +192,10 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+    setIsPlaying(false); // Stop playback if it's running
     closeModal(); // Close the modal if open
     exitReplay(); // Exit replay mode
-    onClose(); // Call the onClose prop to ensure proper navigation
+    onClose(); // Call the onClose prop for navigation
   }, [exitReplay, closeModal, onClose]);
   
   if (!isReplayMode) return null;
@@ -296,6 +316,20 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
               />
             </Tooltip>
             
+            {/* Add a view result button when at the final step */}
+            {isLastStep && isGameComplete && (
+              <Tooltip label="View Game Result">
+                <IconButton
+                  aria-label="View Game Result"
+                  icon={<FaEye />}
+                  size="md"
+                  onClick={onOpen}
+                  colorScheme={wasGameWon ? "green" : "red"}
+                  ml={2}
+                />
+              </Tooltip>
+            )}
+            
             <Tooltip label={`Speed: ${playbackSpeed}x`}>
               <Button size="md" onClick={handleSpeedChange} ml={2} colorScheme="teal">
                 {playbackSpeed}x
@@ -340,6 +374,7 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
           >
             {wasGameWon ? "Victory!" : "Game Over"}
           </ModalHeader>
+          <ModalCloseButton />
           <ModalBody textAlign="center" py={6}>
             {wasGameWon ? (
               <Text fontSize="lg">Game completed in {formatTime(
@@ -364,7 +399,7 @@ const GameReplay: React.FC<GameReplayProps> = ({ onClose }) => {
               colorScheme={wasGameWon ? "green" : "red"} 
               onClick={handleReplayCompleted}
             >
-              Continue Viewing
+              Close & Continue Viewing
             </Button>
           </ModalFooter>
         </ModalContent>

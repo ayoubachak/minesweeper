@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
-import { Difficulty, GameBoard, GameStatus, Position } from '../types/game.types';
+import { Difficulty, GameBoard, GameStatus, Position, CellState } from '../types/game.types';
 import { SettingsContext } from './SettingsContext';
 import * as gameService from '../services/gameService';
 import * as storageService from '../services/storageService';
@@ -36,6 +36,8 @@ interface GameContextType {
   exitReplay: () => void;
   refreshGameHistory: () => void;
   replayGameData: gameHistoryService.GameHistoryEntry | null;
+  isAIPlaying: boolean;
+  setAIPlaying: (isPlaying: boolean) => void;
 }
 
 // Create context
@@ -103,6 +105,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isReplayMode, setIsReplayMode] = useState(false);
   const [currentReplayStep, setCurrentReplayStep] = useState(0);
   const [replayGame, setReplayGame] = useState<gameHistoryService.GameHistoryEntry | null>(null);
+  const [isAIPlaying, setAIPlaying] = useState(false);
   
   // Load game history on mount
   useEffect(() => {
@@ -209,14 +212,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update the board first
     dispatch({ type: 'REVEAL_CELL', payload: position });
     
-    // Then record the action with a slight delay to ensure the state update happens first
-    setTimeout(() => {
-      const updatedBoard = gameService.revealCell(gameBoard, position);
-      gameHistoryService.recordGameAction('REVEAL', updatedBoard, position);
-    }, 0);
+    // Only record action if not in AI mode
+    if (!isAIPlaying) {
+      // Then record the action with a slight delay to ensure the state update happens first
+      setTimeout(() => {
+        const updatedBoard = gameService.revealCell(gameBoard, position);
+        gameHistoryService.recordGameAction('REVEAL', updatedBoard, position);
+      }, 0);
+    }
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReplayMode, gameBoard]);
+  }, [isReplayMode, gameBoard, isAIPlaying]);
   
   const toggleFlag = useCallback((position: Position) => {
     if (isReplayMode) return; // Don't allow actions during replay
@@ -224,14 +230,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update the board first
     dispatch({ type: 'TOGGLE_FLAG', payload: position });
     
-    // Then record the action with a slight delay to ensure the state update happens first
-    setTimeout(() => {
-      const updatedBoard = gameService.toggleFlag(gameBoard, position);
-      gameHistoryService.recordGameAction('FLAG', updatedBoard, position);
-    }, 0);
+    // Only record action if not in AI mode
+    if (!isAIPlaying) {
+      // Then record the action with a slight delay to ensure the state update happens first
+      setTimeout(() => {
+        const updatedBoard = gameService.toggleFlag(gameBoard, position);
+        gameHistoryService.recordGameAction('FLAG', updatedBoard, position);
+      }, 0);
+    }
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReplayMode, gameBoard]);
+  }, [isReplayMode, gameBoard, isAIPlaying]);
   
   const chordCell = useCallback((position: Position) => {
     if (isReplayMode) return; // Don't allow actions during replay
@@ -239,14 +248,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update the board first
     dispatch({ type: 'CHORD_CELL', payload: position });
     
-    // Then record the action with a slight delay to ensure the state update happens first
-    setTimeout(() => {
-      const updatedBoard = gameService.chordCell(gameBoard, position);
-      gameHistoryService.recordGameAction('CHORD', updatedBoard, position);
-    }, 0);
+    // Only record action if not in AI mode
+    if (!isAIPlaying) {
+      // Then record the action with a slight delay to ensure the state update happens first
+      setTimeout(() => {
+        const updatedBoard = gameService.chordCell(gameBoard, position);
+        gameHistoryService.recordGameAction('CHORD', updatedBoard, position);
+      }, 0);
+    }
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReplayMode, gameBoard]);
+  }, [isReplayMode, gameBoard, isAIPlaying]);
   
   const startGame = useCallback(() => {
     if (isReplayMode) return; // Don't allow actions during replay
@@ -254,14 +266,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update the board first
     dispatch({ type: 'START_GAME' });
     
-    // Then record the action with a slight delay to ensure the state update happens first
-    setTimeout(() => {
-      const updatedBoard = gameService.startGame(gameBoard);
-      gameHistoryService.recordGameAction('START', updatedBoard);
-    }, 0);
+    // Only record action if not in AI mode
+    if (!isAIPlaying) {
+      // Then record the action with a slight delay to ensure the state update happens first
+      setTimeout(() => {
+        const updatedBoard = gameService.startGame(gameBoard);
+        gameHistoryService.recordGameAction('START', updatedBoard);
+      }, 0);
+    }
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReplayMode, gameBoard]);
+  }, [isReplayMode, gameBoard, isAIPlaying]);
   
   const restartGame = useCallback(() => {
     if (isReplayMode) {
@@ -342,36 +357,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // If this is the last step and the game ended in a loss, make sure all mines are revealed
+    // If this is the last step and the game ended in a completed state, ensure correct status
     const isLastStep = stepIndex === game.actions.length - 1;
     
     if (isLastStep && game.isComplete) {
-      // Explicitly set the game status based on the actual game outcome
-      // Important: Use the final status from the original game
+      // Explicitly set the game status based on the original game outcome
       replayedBoard.status = game.gameBoard.status;
       
+      // Make sure end time is set for completed games
+      if (game.endTime && !replayedBoard.endTime) {
+        replayedBoard.endTime = game.endTime;
+      }
+      
+      // For lost games, ensure all mines are revealed
       if (game.gameBoard.status === GameStatus.LOST) {
-        // Make sure all mines are revealed for a lost game
-        replayedBoard.cells = replayedBoard.cells.map(row => 
-          row.map(cell => ({
-            ...cell,
-            revealed: cell.isMine ? true : cell.revealed
-          }))
+        // First, make sure all mines are revealed
+        replayedBoard.cells = replayedBoard.cells.map((row, rowIndex) => 
+          row.map((cell, colIndex) => {
+            // Keep flags as is, but reveal mines
+            if (cell.isMine) {
+              return {
+                ...cell,
+                revealed: true
+              };
+            }
+            return cell;
+          })
         );
         
-        // If the final action was clicking a mine, make sure it's revealed
+        // If the final action was clicking a mine, ensure it's revealed and highlighted
         if (action?.type === 'REVEAL' && action.position) {
           const { row, col } = action.position;
           if (replayedBoard.cells[row][col].isMine) {
-            // Ensure this specific mine is definitely revealed
+            // Make sure this specific mine is explicitly revealed
             replayedBoard.cells[row][col].revealed = true;
           }
         }
       }
       
-      // Make sure the end time is set for completed games
-      if (game.endTime && !replayedBoard.endTime) {
-        replayedBoard.endTime = game.endTime;
+      // For won games, ensure the status is explicitly set
+      if (game.gameBoard.status === GameStatus.WON) {
+        replayedBoard.status = GameStatus.WON;
       }
     }
     
@@ -381,7 +407,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update the board
     dispatch({ type: 'SET_BOARD', payload: replayedBoard });
     
-    console.log('Current replay step:', stepIndex);
+    console.log('Current replay step:', stepIndex, 'Status:', replayedBoard.status);
   };
   
   const handleExitReplay = useCallback(() => {
@@ -453,7 +479,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     totalReplaySteps: replayGame?.actions.length || 0,
     exitReplay: handleExitReplay,
     refreshGameHistory,
-    replayGameData: replayGame
+    replayGameData: replayGame,
+    isAIPlaying,
+    setAIPlaying
   }), [
     gameBoard, 
     initGame, 
@@ -470,7 +498,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentReplayStep,
     replayGame,
     handleExitReplay,
-    refreshGameHistory
+    refreshGameHistory,
+    isAIPlaying,
+    setAIPlaying
   ]);
   
   return (

@@ -31,7 +31,9 @@ const AIPlayer: React.FC<AIPlayerProps> = ({ onClose }) => {
     revealCell, 
     toggleFlag, 
     startGame,
-    restartGame
+    restartGame,
+    isAIPlaying,
+    setAIPlaying
   } = useContext(GameContext);
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,6 +48,17 @@ const AIPlayer: React.FC<AIPlayerProps> = ({ onClose }) => {
   const bgColor = useColorModeValue('gray.100', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const borderColor = useColorModeValue('gray.300', 'gray.600');
+  
+  // Set AI playing status when component mounts/unmounts
+  useEffect(() => {
+    setAIPlaying(true);
+    return () => setAIPlaying(false);
+  }, [setAIPlaying]);
+  
+  // Update AI playing status when play/pause state changes
+  useEffect(() => {
+    setAIPlaying(isPlaying);
+  }, [isPlaying, setAIPlaying]);
   
   // Clear timer when unmounting
   useEffect(() => {
